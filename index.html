@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Interactive Experience</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+        }
+
+        /* ============ STAGE 1: IPHONE LOCK SCREEN ============ */
+        #stage-loading {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: #000;
+        }
+
+        .iphone-frame {
+            width: 340px;
+            height: 680px;
+            background: #1a1a1a;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 
+                0 0 0 2px #333,
+                0 0 0 4px #1a1a1a,
+                0 20px 60px rgba(0,0,0,0.8),
+                0 0 80px rgba(255,255,255,0.05);
+            position: relative;
+            opacity: 0;
+            transform: scale(0.6);
+        }
+
+        .iphone-notch {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 30px;
+            background: #1a1a1a;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-radius: 38px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 80px;
+        }
+
+        .lock-time {
+            font-size: 72px;
+            font-weight: 200;
+            color: #fff;
+            letter-spacing: -2px;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        .lock-date {
+            font-size: 18px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 8px;
+            font-weight: 400;
+        }
+
+        .lock-hint {
+            position: absolute;
+            bottom: 60px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            bottom: 30px;
+            width: 120px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            animation: swipeHint 2s ease-in-out infinite;
+        }
+
+        @keyframes swipeHint {
+            0%, 100% { transform: translateY(0); opacity: 0.3; }
+            50% { transform: translateY(-8px); opacity: 0.8; }
+        }
+
+        /* ============ STAGE 2: NOTIFICATION ============ */
+        #stage-notification {
+            position: fixed;
+            inset: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 80;
+            background: #000;
+        }
+
+        .notification-card {
+            width: 300px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border-radius: 24px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(-100px) scale(0.9);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .notif-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .notif-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #34C759, #30D158);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .notif-app-name {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            font-weight: 500;
+        }
+
+        .notif-time {
+            margin-left: auto;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .notif-sender {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .notif-text {
+            font-size: 14px;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.4;
+        }
+
+        /* ============ STAGE 3: CHAT ============ */
+        #stage-chat {
+            position: fixed;
+            inset: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 70;
+            background: #000;
+        }
+
+        .chat-screen {
+            width: 340px;
+            height: 680px;
+            background: #000;
+            border-radius: 50px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 
+                0 0 0 2px #333,
+                0 0 0 4px #1a1a1a,
+                0 20px 60px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: rgba(28,28,30,0.95);
+            backdrop-filter: blur(20px);
+            padding: 50px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        .chat-back {
+            position: absolute;
+            left: 16px;
+            color: #0A84FF;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .chat-contact {
+            text-align: center;
+        }
+
+        .chat-contact-photo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #666, #999);
+            border-radius: 50%;
+            margin: 0 auto 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .chat-contact-name {
+            font-size: 14px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.35;
+            word-wrap: break-word;
+            cursor: pointer;
+            transition: transform 0.2s;
+            animation: msgAppear 0.4s ease-out;
+        }
+
+        @keyframes msgAppear {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .message-bubble:hover {
+            transform: scale(1.02);
+        }
+
+        .message-incoming {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-outgoing {
+            align-self: flex-end;
+            background: #0A84FF;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            align-self: flex-start;
+            margin-left: 8px;
+            margin-top: -4px;
+        }
+
+        .message-time-out {
+            align-self: flex-end;
+            margin-right: 8px;
+        }
+
+        .chat-input-area {
+            padding: 12px 16px 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(28,28,30,0.95);
+            backdrop-filter: blur(20px);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 14px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+
+        .chat-send-btn {
+            width: 32px;
+            height: 32px;
+            background: #0A84FF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        /* ============ REPLY BUTTONS ============ */
+        .reply-buttons {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            justify-content: center;
+            animation: msgAppear 0.4s ease-out;
+        }
+
+        .reply-btn {
+            padding: 8px 20px;
+            border-radius: 18px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .reply-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .reply-yes {
+            background: #34C759;
+            color: #fff;
+        }
+
+        .reply-no {
+            background: #FF3B30;
+            color: #fff;
+        }
+
+        /* ============ LINK MESSAGE ============ */
+        .link-message {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(10,132,255,0.3);
+            border-radius: 18px;
+            padding: 12px 14px;
+            max-width: 80%;
+            cursor: pointer;
+            animation: msgAppear 0.4s ease-out;
+        }
+
+        .link-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .link-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0A84FF, #5856D6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .link-text {
+            color: #0A84FF;
+            font-size: 14px;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .link-domain {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 2px;
+        }
+
+        /* ============ STAGE 4: SAD FACE (PHONE OFF) ============ */
+        #stage-sad {
+            position: fixed;
+            inset: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            background: #000;
+            flex-direction: column;
+        }
+
+        .sad-emoji {
+            font-size: 120px;
+            margin-bottom: 20px;
+            animation: sadAppear 1s ease-out;
+        }
+
+        @keyframes sadAppear {
+            from { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+            to { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        .sad-text {
+            font-size: 18px;
+            color: rgba(255,255,255,0.6);
+            animation: sadAppear 1s ease-out 0.3s both;
+        }
+
+        .restart-btn {
+            margin-top: 30px;
+            padding: 12px 30px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            animation: sadAppear 1s ease-out 0.6s both;
+        }
+
+        /* ============ STAGE 5: HACK EFFECT ============ */
+        #stage-hack {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 200;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #hack-canvas {
+            position: fixed;
+            inset: 0;
+        }
+
+        .hack-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 201;
+            pointer-events: none;
+        }
+
+        .hack-text {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+            max-width: 90%;
+            text-align: left;
+            line-height: 1.6;
+            opacity: 0;
+        }
+
+        .hack-glitch {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 255, 0, 0.05);
+            z-index: 202;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .hack-scanline {
+            position: fixed;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(0, 255, 0, 0.3);
+            z-index: 203;
+            pointer-events: none;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        /* ============ STAGE 6: BREAK EFFECT ============ */
+        #stage-break {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 200;
+            background: #000;
+            pointer-events: none;
+        }
+
+        #break-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 201;
+        }
+
+        /* ============ STAGE 7: HEART ============ */
+        #stage-heart {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 60;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #heart-canvas {
+            position: fixed;
+            inset: 0;
+        }
+
+        /* ============ STAGE 8: FINAL TEXT ============ */
+        #stage-final {
+            position: fixed;
+            inset: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            background: #000;
+            flex-direction: column;
+        }
+
+        .final-text {
+            font-size: 48px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.5);
+            text-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+
+        .final-sub {
+            font-size: 18px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 20px;
+            opacity: 0;
+        }
+
+        .final-restart {
+            margin-top: 40px;
+            padding: 14px 40px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 30px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .final-restart:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+        }
+
+        /* ============ CRACK OVERLAY ============ */
+        .crack-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+        }
+
+        .crack-line {
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 0 4px rgba(255,255,255,0.5);
+        }
+
+        /* ============ TYPING INDICATOR ============ */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 18px;
+            align-self: flex-start;
+            margin-bottom: 8px;
+            animation: msgAppear 0.3s ease-out;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            animation: typingBounce 1.4s ease-in-out infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 400px) {
+            .iphone-frame, .chat-screen {
+                width: 92vw;
+                height: 85vh;
+                border-radius: 40px;
+            }
+            .final-text { font-size: 32px; }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+
+    <!-- STAGE 1: iPhone Lock Screen -->
+    <div id="stage-loading">
+        <div class="iphone-frame" id="iphone-frame">
+            <div class="iphone-notch"></div>
+            <div class="iphone-screen" id="lock-screen">
+                <div class="lock-time" id="lock-time">09:41</div>
+                <div class="lock-date" id="lock-date">Понедельник, 23 июня</div>
+                <div class="lock-hint">Смахните вверх, чтобы разблокировать</div>
+                <div class="swipe-indicator"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAGE 2: Notification -->
+    <div id="stage-notification">
+        <div class="notification-card" id="notification-card">
+            <div class="notif-header">
+                <div class="notif-icon">💬</div>
+                <div class="notif-app-name">Сообщения</div>
+                <div class="notif-time">Сейчас</div>
+            </div>
+            <div class="notif-sender">Unknown</div>
+            <div class="notif-text">Привет, открой это.</div>
+        </div>
+    </div>
+
+    <!-- STAGE 3: Chat -->
+    <div id="stage-chat">
+        <div class="chat-screen" id="chat-screen">
+            <div class="chat-header">
+                <div class="chat-back">‹ Назад</div>
+                <div class="chat-contact">
+                    <div class="chat-contact-photo">?</div>
+                    <div class="chat-contact-name">Unknown</div>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message-bubble message-incoming" id="target-message">
+                    Привет, открой это.
+                </div>
+                <div class="message-time">Сейчас</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" placeholder="iMessage" readonly>
+                <div class="chat-send-btn">▲</div>
+            </div>
+            <div class="crack-overlay" id="crack-overlay"></div>
+        </div>
+    </div>
+
+    <!-- STAGE 4: Sad Face (Phone Off) -->
+    <div id="stage-sad">
+        <div class="sad-emoji">😢</div>
+        <div class="sad-text">Телефон выключился...</div>
+        <button class="restart-btn" onclick="location.reload()">Попробовать снова</button>
+    </div>
+
+    <!-- STAGE 5: HACK EFFECT -->
+    <div id="stage-hack">
+        <canvas id="hack-canvas"></canvas>
+        <div class="hack-glitch" id="hack-glitch"></div>
+        <div class="hack-scanline" id="hack-scanline"></div>
+        <div class="hack-overlay">
+            <div class="hack-text" id="hack-text"></div>
+        </div>
+    </div>
+
+    <!-- STAGE 6: Break Effect -->
+    <div id="stage-break">
+        <canvas id="break-canvas"></canvas>
+    </div>
+
+    <!-- STAGE 7: Heart -->
+    <div id="stage-heart">
+        <canvas id="heart-canvas"></canvas>
+    </div>
+
+    <!-- STAGE 8: Final Text -->
+    <div id="stage-final">
+        <div class="final-text" id="final-text">Все иди нахуй</div>
+        <div class="final-sub" id="final-sub">Это был просто пранк</div>
+        <button class="final-restart" id="final-restart" onclick="location.reload()">Начать заново</button>
+    </div>
+
+    <script>
+        // ============ STAGE 1: IPHONE APPEARANCE ============
+        function initStage1() {
+            const frame = document.getElementById('iphone-frame');
+            const timeEl = document.getElementById('lock-time');
+            const dateEl = document.getElementById('lock-date');
+
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            timeEl.textContent = `${hours}:${minutes}`;
+
+            const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+            const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+            dateEl.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+
+            gsap.to(frame, {
+                opacity: 1,
+                scale: 1,
+                duration: 1.5,
+                ease: "power3.out",
+                onComplete: () => {
+                    enableSwipeUnlock();
+                }
+            });
+        }
+
+        // ============ SWIPE UNLOCK ============
+        function enableSwipeUnlock() {
+            const lockScreen = document.getElementById('lock-screen');
+            let startY = 0;
+            let isSwiping = false;
+            let unlocked = false;
+
+            function handleStart(y) {
+                if (unlocked) return;
+                startY = y;
+                isSwiping = true;
+            }
+
+            function handleMove(y) {
+                if (!isSwiping || unlocked) return;
+                const deltaY = startY - y;
+                if (deltaY > 0) {
+                    lockScreen.style.transform = `translateY(-${deltaY * 0.5}px)`;
+                    lockScreen.style.opacity = Math.max(0.3, 1 - deltaY / 400);
+                }
+            }
+
+            function handleEnd(y) {
+                if (!isSwiping || unlocked) return;
+                isSwiping = false;
+                const deltaY = startY - y;
+
+                if (deltaY > 80) {
+                    unlocked = true;
+                    unlockPhone();
+                } else {
+                    gsap.to(lockScreen, {
+                        y: 0,
+                        opacity: 1,
+                        duration: 0.3,
+                        ease: "power2.out"
+                    });
+                }
+            }
+
+            lockScreen.addEventListener('touchstart', (e) => {
+                handleStart(e.touches[0].clientY);
+            }, { passive: true });
+
+            lockScreen.addEventListener('touchmove', (e) => {
+                handleMove(e.touches[0].clientY);
+            }, { passive: true });
+
+            lockScreen.addEventListener('touchend', (e) => {
+                handleEnd(e.changedTouches[0].clientY);
+            }, { passive: true });
+
+            lockScreen.addEventListener('mousedown', (e) => {
+                handleStart(e.clientY);
+            });
+
+            lockScreen.addEventListener('mousemove', (e) => {
+                handleMove(e.clientY);
+            });
+
+            lockScreen.addEventListener('mouseup', (e) => {
+                handleEnd(e.clientY);
+            });
+
+            lockScreen.addEventListener('click', (e) => {
+                if (!isSwiping && !unlocked) {
+                    unlocked = true;
+                    unlockPhone();
+                }
+            });
+        }
+
+        function unlockPhone() {
+            const frame = document.getElementById('iphone-frame');
+            const lockScreen = document.getElementById('lock-screen');
+            const loadingStage = document.getElementById('stage-loading');
+
+            const flash = document.createElement('div');
+            flash.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:999;opacity:0;pointer-events:none;';
+            document.body.appendChild(flash);
+
+            gsap.to(flash, {
+                opacity: 0.9,
+                duration: 0.08,
+                onComplete: () => {
+                    gsap.to(flash, {
+                        opacity: 0,
+                        duration: 0.25,
+                        onComplete: () => flash.remove()
+                    });
+                }
+            });
+
+            gsap.to(lockScreen, {
+                y: -400,
+                opacity: 0,
+                duration: 0.4,
+                ease: "power2.in",
+                onComplete: () => {
+                    gsap.to(frame, {
+                        scale: 0.85,
+                        opacity: 0,
+                        duration: 0.4,
+                        ease: "power2.in",
+                        onComplete: () => {
+                            loadingStage.style.display = 'none';
+                            showNotification();
+                        }
+                    });
+                }
+            });
+        }
+
+        // ============ STAGE 2: NOTIFICATION ============
+        function showNotification() {
+            const notifStage = document.getElementById('stage-notification');
+            const card = document.getElementById('notification-card');
+
+            notifStage.style.display = 'flex';
+
+            gsap.to(card, {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.8,
+                ease: "back.out(1.7)",
+                onComplete: () => {
+                    gsap.to(card, {
+                        x: [-4, 4, -3, 3, -2, 2, -1, 1, 0],
+                        duration: 0.35,
+                        ease: "none",
+                        repeat: 1,
+                        onComplete: () => {
+                            if (navigator.vibrate) navigator.vibrate([40, 80, 40]);
+                        }
+                    });
+                }
+            });
+
+            card.addEventListener('click', () => {
+                gsap.to(card, {
+                    scale: 0.9,
+                    opacity: 0,
+                    duration: 0.3,
+                    onComplete: () => {
+                        notifStage.style.display = 'none';
+                        showChat();
+                    }
+                });
+            });
+        }
+
+        // ============ STAGE 3: CHAT ============
+        function showChat() {
+            const chatStage = document.getElementById('stage-chat');
+            const chatScreen = document.getElementById('chat-screen');
+
+            chatStage.style.display = 'flex';
+
+            gsap.from(chatScreen, {
+                scale: 0.8,
+                opacity: 0,
+                duration: 0.6,
+                ease: "power2.out"
+            });
+
+            setTimeout(() => {
+                showReplyButtons();
+            }, 800);
+        }
+
+        function showReplyButtons() {
+            const messagesContainer = document.getElementById('chat-messages');
+
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'reply-buttons';
+            buttonsDiv.innerHTML = `
+                <button class="reply-btn reply-yes" id="btn-yes">Хорошо</button>
+                <button class="reply-btn reply-no" id="btn-no">Не иди нахуй</button>
+            `;
+            messagesContainer.appendChild(buttonsDiv);
+
+            document.getElementById('btn-yes').addEventListener('click', () => {
+                handleYesReply();
+            });
+
+            document.getElementById('btn-no').addEventListener('click', () => {
+                handleNoReply();
+            });
+        }
+
+        function handleYesReply() {
+            const messagesContainer = document.getElementById('chat-messages');
+
+            const buttons = document.querySelector('.reply-buttons');
+            if (buttons) buttons.remove();
+
+            const replyMsg = document.createElement('div');
+            replyMsg.className = 'message-bubble message-outgoing';
+            replyMsg.textContent = 'Хорошо';
+            messagesContainer.appendChild(replyMsg);
+
+            const replyTime = document.createElement('div');
+            replyTime.className = 'message-time message-time-out';
+            replyTime.textContent = 'Сейчас';
+            messagesContainer.appendChild(replyTime);
+
+            setTimeout(() => {
+                showTypingIndicator();
+            }, 600);
+        }
+
+        function showTypingIndicator() {
+            const messagesContainer = document.getElementById('chat-messages');
+
+            const typing = document.createElement('div');
+            typing.className = 'typing-indicator';
+            typing.id = 'typing-indicator';
+            typing.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            messagesContainer.appendChild(typing);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            setTimeout(() => {
+                typing.remove();
+                sendLinkMessage();
+            }, 2000);
+        }
+
+        function sendLinkMessage() {
+            const messagesContainer = document.getElementById('chat-messages');
+
+            const linkMsg = document.createElement('div');
+            linkMsg.className = 'link-message';
+            linkMsg.id = 'link-message';
+            linkMsg.innerHTML = `
+                <div class="link-preview">
+                    <div class="link-icon">🔗</div>
+                    <div>
+                        <div class="link-text">https://t.me/your_heart</div>
+                        <div class="link-domain">Telegram</div>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(linkMsg);
+
+            const linkTime = document.createElement('div');
+            linkTime.className = 'message-time';
+            linkTime.textContent = 'Сейчас';
+            messagesContainer.appendChild(linkTime);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            linkMsg.addEventListener('click', () => {
+                startHackEffect();
+            });
+        }
+
+        function handleNoReply() {
+            const messagesContainer = document.getElementById('chat-messages');
+
+            const buttons = document.querySelector('.reply-buttons');
+            if (buttons) buttons.remove();
+
+            const replyMsg = document.createElement('div');
+            replyMsg.className = 'message-bubble message-outgoing';
+            replyMsg.textContent = 'Не иди нахуй';
+            messagesContainer.appendChild(replyMsg);
+
+            const replyTime = document.createElement('div');
+            replyTime.className = 'message-time message-time-out';
+            replyTime.textContent = 'Сейчас';
+            messagesContainer.appendChild(replyTime);
+
+            setTimeout(() => {
+                phoneTurnOff();
+            }, 1000);
+        }
+
+        function phoneTurnOff() {
+            const chatStage = document.getElementById('stage-chat');
+            const chatScreen = document.getElementById('chat-screen');
+            const sadStage = document.getElementById('stage-sad');
+
+            gsap.to(chatScreen, {
+                opacity: 0,
+                filter: 'brightness(0)',
+                duration: 0.8,
+                ease: "power2.in",
+                onComplete: () => {
+                    chatStage.style.display = 'none';
+                    sadStage.style.display = 'flex';
+
+                    gsap.from('.sad-emoji', {
+                        scale: 0.3,
+                        rotation: -20,
+                        opacity: 0,
+                        duration: 1,
+                        ease: "back.out(1.7)"
+                    });
+
+                    gsap.from('.sad-text', {
+                        y: 20,
+                        opacity: 0,
+                        duration: 0.8,
+                        delay: 0.3
+                    });
+
+                    gsap.from('.restart-btn', {
+                        y: 20,
+                        opacity: 0,
+                        duration: 0.8,
+                        delay: 0.6
+                    });
+                }
+            });
+        }
+
+        // ============ STAGE 5: HACK EFFECT ============
+        function startHackEffect() {
+            const chatStage = document.getElementById('stage-chat');
+            const hackStage = document.getElementById('stage-hack');
+            const canvas = document.getElementById('hack-canvas');
+            const ctx = canvas.getContext('2d');
+            const hackText = document.getElementById('hack-text');
+            const glitch = document.getElementById('hack-glitch');
+            const scanline = document.getElementById('hack-scanline');
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Hide chat, show hack
+            chatStage.style.display = 'none';
+            hackStage.style.display = 'block';
+
+            // Matrix rain effect
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+            const fontSize = 14;
+            const columns = Math.floor(canvas.width / fontSize);
+            const drops = [];
+
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.random() * -100;
+            }
+
+            let hackTime = 0;
+            let hackPhase = 'matrix'; // matrix -> glitch -> text
+            let matrixAnimId;
+
+            function drawMatrix() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#0f0';
+                ctx.font = fontSize + 'px monospace';
+
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+
+                hackTime += 0.016;
+
+                if (hackTime > 2 && hackPhase === 'matrix') {
+                    hackPhase = 'glitch';
+                    startGlitchEffect();
+                }
+
+                if (hackPhase === 'matrix') {
+                    matrixAnimId = requestAnimationFrame(drawMatrix);
+                }
+            }
+
+            drawMatrix();
+
+            function startGlitchEffect() {
+                let glitchCount = 0;
+                const maxGlitches = 15;
+
+                function doGlitch() {
+                    if (glitchCount >= maxGlitches) {
+                        showHackText();
+                        return;
+                    }
+
+                    glitch.style.opacity = Math.random() * 0.3;
+                    glitch.style.left = `${(Math.random() - 0.5) * 20}px`;
+
+                    scanline.style.top = `${Math.random() * 100}%`;
+                    scanline.style.opacity = 0.5 + Math.random() * 0.5;
+
+                    canvas.style.filter = `hue-rotate(${Math.random() * 360}deg) brightness(${1 + Math.random()})`;
+
+                    glitchCount++;
+                    setTimeout(doGlitch, 100 + Math.random() * 200);
+                }
+
+                doGlitch();
+            }
+
+            function showHackText() {
+                hackPhase = 'text';
+                cancelAnimationFrame(matrixAnimId);
+
+                glitch.style.opacity = 0;
+                scanline.style.opacity = 0;
+                canvas.style.filter = 'none';
+
+                const hackMessages = [
+                    '> Инициализация взлома...',
+                    '> Подключение к серверу...',
+                    '> Обход защиты... [OK]',
+                    '> Доступ к ядру системы... [OK]',
+                    '> Загрузка payload...',
+                    '> Выполнение эксплойта...',
+                    '> Доступ получен.',
+                    '> Загрузка сердечка...'
+                ];
+
+                let msgIndex = 0;
+                hackText.style.opacity = 1;
+
+                function typeNextLine() {
+                    if (msgIndex >= hackMessages.length) {
+                        setTimeout(() => {
+                            hackStage.style.display = 'none';
+                            startBreakEffect();
+                        }, 1500);
+                        return;
+                    }
+
+                    const line = document.createElement('div');
+                    line.textContent = hackMessages[msgIndex];
+                    line.style.opacity = 0;
+                    hackText.appendChild(line);
+
+                    gsap.to(line, {
+                        opacity: 1,
+                        duration: 0.3,
+                        onComplete: () => {
+                            msgIndex++;
+                            setTimeout(typeNextLine, 400 + Math.random() * 300);
+                        }
+                    });
+                }
+
+                typeNextLine();
+            }
+        }
+
+        // ============ STAGE 6: BREAK EFFECT ============
+        function startBreakEffect() {
+            const breakStage = document.getElementById('stage-break');
+            const canvas = document.getElementById('break-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            breakStage.style.display = 'block';
+
+            // Create particles from center of screen (simulating phone break)
+            const particles = createBreakParticles();
+            animateExplosion(particles);
+        }
+
+        function createBreakParticles() {
+            const particles = [];
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const cols = 60;
+            const rows = 80;
+            const cellW = 340 / cols;
+            const cellH = 680 / rows;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = centerX - 170 + c * cellW + cellW / 2;
+                    const y = centerY - 340 + r * cellH + cellH / 2;
+
+                    let color;
+                    if (r < 8) {
+                        color = `rgba(40,40,42,${0.8 + Math.random()*0.2})`;
+                    } else if (r > 10 && r < 18 && c > 3 && c < 20) {
+                        color = `rgba(60,60,65,${0.7 + Math.random()*0.3})`;
+                    } else {
+                        color = `rgba(0,0,0,${0.9 + Math.random()*0.1})`;
+                    }
+
+                    particles.push({
+                        x: x,
+                        y: y,
+                        originX: x,
+                        originY: y,
+                        vx: (Math.random() - 0.5) * 20,
+                        vy: (Math.random() - 0.5) * 20 - 8,
+                        size: cellW * 0.8,
+                        color: color,
+                        rotation: Math.random() * Math.PI * 2,
+                        vRot: (Math.random() - 0.5) * 0.3,
+                        life: 1,
+                        delay: Math.random() * 0.5
+                    });
+                }
+            }
+            return particles;
+        }
+
+        function animateExplosion(particles) {
+            const canvas = document.getElementById('break-canvas');
+            const ctx = canvas.getContext('2d');
+            let animationId;
+            let time = 0;
+            let phase = 'explode';
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                time += 0.016;
+
+                let allGathered = true;
+
+                particles.forEach((p, i) => {
+                    if (time < p.delay) return;
+
+                    const t = time - p.delay;
+
+                    if (phase === 'explode') {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.3;
+                        p.vx *= 0.98;
+                        p.vy *= 0.98;
+                        p.rotation += p.vRot;
+                        p.life = Math.max(0, 1 - t * 0.5);
+
+                        if (t > 1.5) {
+                            phase = 'gather';
+                        }
+                    } else if (phase === 'gather') {
+                        const heartPos = getHeartPosition(i, particles.length);
+                        const targetX = canvas.width / 2 + heartPos.x * 180;
+                        const targetY = canvas.height / 2 - heartPos.y * 180;
+
+                        const dx = targetX - p.x;
+                        const dy = targetY - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist > 5) {
+                            allGathered = false;
+                            p.x += dx * 0.04;
+                            p.y += dy * 0.04;
+                            p.rotation *= 0.95;
+                        } else {
+                            p.x = targetX;
+                            p.y = targetY;
+                        }
+
+                        p.life = Math.min(1, p.life + 0.02);
+
+                        const progress = Math.min(1, t - 1.5);
+                        const r = Math.floor(255);
+                        const g = Math.floor(50 + progress * 50);
+                        const b = Math.floor(80 + progress * 40);
+                        p.color = `rgba(${r},${g},${b},${0.6 + progress * 0.4})`;
+                    }
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                if (phase === 'gather' && allGathered && time > 3) {
+                    cancelAnimationFrame(animationId);
+                    transitionToHeart();
+                    return;
+                }
+
+                animationId = requestAnimationFrame(draw);
+            }
+
+            draw();
+        }
+
+        function getHeartPosition(index, total) {
+            const t = (index / total) * Math.PI * 2;
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+            return { x: x / 16, y: y / 16 };
+        }
+
+        // ============ STAGE 7: INTERACTIVE 4D HEART ============
+        function transitionToHeart() {
+            document.getElementById('stage-break').style.display = 'none';
+            const heartStage = document.getElementById('stage-heart');
+            heartStage.style.display = 'flex';
+
+            initHeartCanvas();
+        }
+
+        let heartAnimId;
+        let heartTime = 0;
+        let heartParticles = [];
+        let heartCanvas, heartCtx;
+
+        function initHeartCanvas() {
+            heartCanvas = document.getElementById('heart-canvas');
+            heartCtx = heartCanvas.getContext('2d');
+            heartCanvas.width = window.innerWidth;
+            heartCanvas.height = window.innerHeight;
+
+            heartParticles = [];
+            const heartCount = 5000;
+
+            for (let i = 0; i < heartCount; i++) {
+                const t = (i / heartCount) * Math.PI * 2;
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+
+                const depth = Math.random();
+                const scale = 0.5 + depth * 1.5;
+                const z = depth * 200;
+
+                heartParticles.push({
+                    baseX: heartCanvas.width / 2 + x * 10 * scale,
+                    baseY: heartCanvas.height / 2 - y * 10 * scale,
+                    x: heartCanvas.width / 2 + x * 10 * scale,
+                    y: heartCanvas.height / 2 - y * 10 * scale,
+                    z: z,
+                    depth: depth,
+                    size: (1 + Math.random() * 2) * scale,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: 0.3 + Math.random() * 1.2,
+                    offset: Math.random() * 30,
+                    baseColor: {
+                        r: 255,
+                        g: Math.floor(30 + depth * 70),
+                        b: Math.floor(60 + depth * 60)
+                    },
+                    vx: 0, vy: 0, vz: 0,
+                    pushX: 0, pushY: 0,
+                    pushForce: 0,
+                    isPushed: false,
+                    returnSpeed: 0.02 + Math.random() * 0.03
+                });
+            }
+
+            // Ambient floating particles
+            const ambientParticles = [];
+            for (let i = 0; i < 600; i++) {
+                ambientParticles.push({
+                    x: Math.random() * heartCanvas.width,
+                    y: Math.random() * heartCanvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: 0.5 + Math.random() * 1.5,
+                    alpha: 0.1 + Math.random() * 0.4,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+
+            let mouseX = -1000, mouseY = -1000;
+            let mouseActive = false;
+            let mouseRadius = 150;
+
+            function updateMouse(x, y) {
+                mouseX = x;
+                mouseY = y;
+                mouseActive = true;
+            }
+
+            heartCanvas.addEventListener('mousemove', (e) => {
+                updateMouse(e.clientX, e.clientY);
+            });
+
+            heartCanvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: false });
+
+            heartCanvas.addEventListener('touchstart', (e) => {
+                updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            heartCanvas.addEventListener('mouseleave', () => {
+                mouseActive = false;
+                mouseX = -1000;
+                mouseY = -1000;
+            });
+
+            heartCanvas.addEventListener('touchend', () => {
+                mouseActive = false;
+                mouseX = -1000;
+                mouseY = -1000;
+            });
+
+            heartTime = 0;
+
+            function animate() {
+                heartCtx.fillStyle = '#000';
+                heartCtx.fillRect(0, 0, heartCanvas.width, heartCanvas.height);
+                heartTime += 0.016;
+
+                const pulse = 1 + Math.sin(heartTime * 1.5) * 0.08;
+
+                // Update heart particles with interaction
+                heartParticles.forEach(p => {
+                    const breathe = Math.sin(heartTime * p.speed + p.phase) * p.offset;
+                    const pulseX = p.baseX + (p.baseX - heartCanvas.width/2) * (pulse - 1) * 0.3;
+                    const pulseY = p.baseY + (p.baseY - heartCanvas.height/2) * (pulse - 1) * 0.3;
+
+                    let targetX = pulseX + breathe * 0.3;
+                    let targetY = pulseY + breathe * 0.3;
+
+                    // Mouse interaction - push particles away
+                    if (mouseActive) {
+                        const dx = p.x - mouseX;
+                        const dy = p.y - mouseY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < mouseRadius && dist > 0) {
+                            const force = (1 - dist / mouseRadius) * 80 * (1 + p.depth);
+                            const angle = Math.atan2(dy, dx);
+                            p.pushX += Math.cos(angle) * force * 0.1;
+                            p.pushY += Math.sin(angle) * force * 0.1;
+                            p.pushForce = force;
+                            p.isPushed = true;
+                        }
+                    }
+
+                    p.pushX *= 0.92;
+                    p.pushY *= 0.92;
+                    p.pushForce *= 0.92;
+
+                    if (Math.abs(p.pushX) < 0.1) p.pushX = 0;
+                    if (Math.abs(p.pushY) < 0.1) p.pushY = 0;
+                    if (p.pushForce < 0.5) p.isPushed = false;
+
+                    p.x += (targetX + p.pushX - p.x) * p.returnSpeed;
+                    p.y += (targetY + p.pushY - p.y) * p.returnSpeed;
+
+                    const depthAlpha = 0.3 + p.depth * 0.7;
+                    const glowSize = p.size * (1 + p.depth * 2);
+
+                    let r = p.baseColor.r;
+                    let g = p.baseColor.g;
+                    let b = p.baseColor.b;
+
+                    if (p.isPushed) {
+                        const pushIntensity = Math.min(1, p.pushForce / 50);
+                        r = Math.min(255, r + pushIntensity * 50);
+                        g = Math.min(255, g + pushIntensity * 100);
+                        b = Math.min(255, b + pushIntensity * 120);
+                    }
+
+                    const gradient = heartCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize * 3);
+                    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${depthAlpha})`);
+                    gradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${depthAlpha * 0.5})`);
+                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+                    heartCtx.beginPath();
+                    heartCtx.arc(p.x, p.y, glowSize, 0, Math.PI * 2);
+                    heartCtx.fillStyle = gradient;
+                    heartCtx.fill();
+                });
+
+                // Draw connections
+                heartCtx.globalCompositeOperation = 'screen';
+                for (let i = 0; i < heartParticles.length; i += 8) {
+                    const p1 = heartParticles[i];
+                    for (let j = i + 1; j < Math.min(i + 6, heartParticles.length); j++) {
+                        const p2 = heartParticles[j];
+                        const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+                        if (dist < 40) {
+                            const avgDepth = (p1.depth + p2.depth) / 2;
+                            heartCtx.beginPath();
+                            heartCtx.moveTo(p1.x, p1.y);
+                            heartCtx.lineTo(p2.x, p2.y);
+                            heartCtx.strokeStyle = `rgba(255, ${80 + avgDepth * 50}, ${120 + avgDepth * 40}, ${0.08 * (1 - dist/40) * avgDepth})`;
+                            heartCtx.lineWidth = 0.5 + avgDepth;
+                            heartCtx.stroke();
+                        }
+                    }
+                }
+                heartCtx.globalCompositeOperation = 'source-over';
+
+                // Ambient particles
+                ambientParticles.forEach(p => {
+                    p.x += p.vx + Math.sin(heartTime + p.phase) * 0.3;
+                    p.y += p.vy + Math.cos(heartTime + p.phase) * 0.3;
+
+                    if (p.x < 0) p.x = heartCanvas.width;
+                    if (p.x > heartCanvas.width) p.x = 0;
+                    if (p.y < 0) p.y = heartCanvas.height;
+                    if (p.y > heartCanvas.height) p.y = 0;
+
+                    const flicker = 0.5 + Math.sin(heartTime * 2 + p.phase) * 0.5;
+                    heartCtx.beginPath();
+                    heartCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    heartCtx.fillStyle = `rgba(255, 100, 150, ${p.alpha * flicker * 0.3})`;
+                    heartCtx.fill();
+                });
+
+                // Mouse cursor glow
+                if (mouseActive) {
+                    const cursorGradient = heartCtx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, mouseRadius);
+                    cursorGradient.addColorStop(0, 'rgba(255, 100, 150, 0.15)');
+                    cursorGradient.addColorStop(0.5, 'rgba(255, 50, 100, 0.05)');
+                    cursorGradient.addColorStop(1, 'rgba(255, 20, 80, 0)');
+                    heartCtx.beginPath();
+                    heartCtx.arc(mouseX, mouseY, mouseRadius, 0, Math.PI * 2);
+                    heartCtx.fillStyle = cursorGradient;
+                    heartCtx.fill();
+                }
+
+                // After 8 seconds, transition to final text
+                if (heartTime > 8) {
+                    cancelAnimationFrame(heartAnimId);
+                    showFinalText();
+                    return;
+                }
+
+                heartAnimId = requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        // ============ STAGE 8: FINAL TEXT ============
+        function showFinalText() {
+            const heartStage = document.getElementById('stage-heart');
+            const finalStage = document.getElementById('stage-final');
+            const finalText = document.getElementById('final-text');
+            const finalSub = document.getElementById('final-sub');
+            const finalRestart = document.getElementById('final-restart');
+
+            heartStage.style.display = 'none';
+            finalStage.style.display = 'flex';
+
+            // Animate text appearance
+            gsap.to(finalText, {
+                opacity: 1,
+                scale: 1,
+                duration: 1.2,
+                ease: "elastic.out(1, 0.5)"
+            });
+
+            gsap.to(finalSub, {
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                delay: 0.5
+            });
+
+            gsap.to(finalRestart, {
+                opacity: 1,
+                y: 0,
+                duration: 0.6,
+                delay: 1
+            });
+        }
+
+        // ============ INIT ============
+        window.addEventListener('load', () => {
+            initStage1();
+        });
+
+        window.addEventListener('resize', () => {
+            const breakCanvas = document.getElementById('break-canvas');
+            const heartCanvas = document.getElementById('heart-canvas');
+            const hackCanvas = document.getElementById('hack-canvas');
+            if (breakCanvas) { breakCanvas.width = window.innerWidth; breakCanvas.height = window.innerHeight; }
+            if (heartCanvas) { heartCanvas.width = window.innerWidth; heartCanvas.height = window.innerHeight; }
+            if (hackCanvas) { hackCanvas.width = window.innerWidth; hackCanvas.height = window.innerHeight; }
+        });
+    </script>
+</body>
+</html>
